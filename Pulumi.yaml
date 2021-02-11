@@ -1,0 +1,6 @@
+name: 3-tier
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+description: ELB - EC2 - RDS 3-tier Architecture Provisioning Example
