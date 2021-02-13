@@ -192,7 +192,7 @@ app1 = aws.ec2.Instance(
     # 추후 health check를 위한 서버 세팅
     user_data=f"""#!/bin/bash
 echo \"Hello, World -- from {zones.names[0]}!\" > index.html
-nohup python -m SimpleHTTPServer 80 &
+nohup sudo python3 -m http.server 80 &
 """,
     tags = {"Name": "app1"}
 )
@@ -206,7 +206,7 @@ app2 = aws.ec2.Instance(
     subnet_id=subnet_app2.id,
     user_data=f"""#!/bin/bash
 echo \"Hello, World -- from {zones.names[2]}!\" > index.html
-nohup python -m SimpleHTTPServer 80 &
+nohup sudo python3 -m http.server 80 &
 """,
     tags = {"Name": "app2"}
 )
