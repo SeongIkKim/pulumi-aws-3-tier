@@ -283,7 +283,51 @@ tg_ec2_attachment_2 = aws.lb.TargetGroupAttachment(
     port=80,
 )
 
+# RDS
 
+## Security Group
+
+db_security_group = aws.ec2.SecurityGroup(
+    resource_name=f"db-security-group-{NAME}",
+    vpc_id=shared_vpc.id
+)
+
+db_security_group_rule = aws.ec2.SecurityGroupRule(
+    resource_name=f"db-security-group-rule-{NAME}",
+    type="ingress",
+    security_group_id=db_security_group.id,
+    source_security_group_id=ec2_security_group,
+    protocol="tcp",
+    from_port=5432,
+    to_port=5432
+)
+
+## subnet group
+
+db_subnet_group = aws.rds.SubnetGroup(
+    resource_name=f"db-subnet-group-{NAME}",
+    subnet_ids=[subnet_rds1.id, subnet_rds2.id]  # AZ-a, AZ-c 커버
+)
+
+## instance
+
+rds_database = aws.rds.Instance(
+    resource_name=f"rds-database-{NAME}",
+    db_subnet_group_name=db_subnet_group,
+    allocated_storage=20,  # rds 용량 20GB
+    storage_type="gp2",
+    instance_class="db.t2.micro",
+    engine="postgres",
+    engine_version="10.6",
+    port=5432,
+    name=f"pulumiAwsDatabase",  # DB name
+    identifier=f"rds-{NAME}",  # RDS instance name
+    username="johnDoe",  # master DB user
+    password="heIsDead",  # user password
+    skip_final_snapshot=True,
+    # final_snapshot_identifier="pulumiAwsDatabaseSnapshot",  # RDS 인스턴스 삭제 시 생성되는 last snapshot name
+    vpc_security_group_ids=[db_security_group.id]
+)
 
 
 pulumi.export("url", load_balancer.dns_name)
