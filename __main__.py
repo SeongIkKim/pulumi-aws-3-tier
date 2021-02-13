@@ -211,3 +211,79 @@ nohup python -m SimpleHTTPServer 80 &
     tags = {"Name": "app2"}
 )
 
+# ELB
+
+## security group for elb
+
+elb_security_group = aws.ec2.SecurityGroup(
+    resource_name=f"elb-security-group-{NAME}",
+    vpc_id=shared_vpc.id,
+    # applicaiton Load balancer에 적용되는 Security Group은 명시하지 않아도 자동설정됩니다.
+    # Outbound traffic - 모든 통신 허용
+    egress=[{
+        'from_port': 0,
+        'to_port': 0,
+        'protocol': '-1', # all
+        'cidr_blocks': ['0.0.0.0/0']
+    }],
+    # Inbound traffic - http 통신 허용
+    ingress=[{
+        'description' : 'Allow internet access to instance',
+        'from_port' : 80,
+        'to_port' : 80,
+        'protocol' : 'tcp',
+        'cidr_blocks' : ['0.0.0.0/0']
+    }]
+)
+
+
+## load balancer
+
+# vpc = aws.ec2.get_vpc(id=shared_vpc.id)
+# vpc_subnets = aws.ec2.get_subnet_ids(vpc_id=vpc.id)
+
+load_balancer = aws.lb.LoadBalancer(
+    resource_name=f"elb-{NAME}",
+    internal=False,
+    security_groups=[elb_security_group.id],
+    subnets=[subnet_public1.id,subnet_public2.id],
+    load_balancer_type="application",
+    tags = {"Name": "pulumi-lb"}
+)
+
+# target group
+
+target_group = aws.lb.TargetGroup(
+    resource_name="target-group",
+    port=80,  # [로드밸런서 -> 타겟그룹] 요청이 80번 포트에서 처리됩니다.
+    protocol="HTTP",
+    target_type="ip",  # ip를 기준으로 ec2 인스턴스를 target group에 등록합니다.
+    vpc_id=shared_vpc.id,
+)
+
+listener = aws.lb.Listener(
+    resource_name="listener",
+    load_balancer_arn=load_balancer.arn,
+    port=80,  # [클라이언트 -> 로드밸런서] 요청이 80번 포트에서 처리됩니다.
+    protocol="HTTP",
+    default_actions=[{"type": "forward", "target_group_arn": target_group.arn}],
+)
+
+tg_ec2_attachment_1 = aws.lb.TargetGroupAttachment(
+    resource_name=f"tg-ec2-attachment-1-{NAME}",
+    target_group_arn=target_group.arn,
+    target_id=app1.private_ip,
+    port=80,
+)
+
+tg_ec2_attachment_2 = aws.lb.TargetGroupAttachment(
+    resource_name=f"tg-ec2-attachment-2-{NAME}",
+    target_group_arn=target_group.arn,
+    target_id=app2.private_ip,
+    port=80,
+)
+
+
+
+
+pulumi.export("url", load_balancer.dns_name)
